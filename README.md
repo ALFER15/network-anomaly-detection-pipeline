@@ -172,7 +172,7 @@ Flujo recomendado:
 3. Conectarse a la tabla `network_traffic_scored`.
 4. Refrescar el modelo y publicar las visualizaciones.
 
-## Conclusiones ✅
+## Conclusiones 
 
 - El proyecto cubre ingestión, almacenamiento, feature engineering, scoring de anomalías, persistencia y entrega vía API.
 - La capa de ML agrega detección no supervisada sin depender de etiquetas en inferencia.
