@@ -1,109 +1,175 @@
-# Network Monitoring System
+# Network Anomaly Detection Pipeline
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.8-009688)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-336791)](https://www.postgresql.org/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8.0-f7931e)](https://scikit-learn.org/)
 
-## ¿Qué es este proyecto?
+## Network Monitoring & Anomaly Analytics
 
-Este proyecto toma tráfico de red del dataset CICIDS2017, lo limpia, lo guarda en PostgreSQL, detecta anomalías con Machine Learning y expone resultados en una API con FastAPI.
+Plataforma de análisis de tráfico de red basada en CICIDS2017. El proyecto combina ETL en Python, modelado relacional en PostgreSQL, detección de anomalías con Isolation Forest y visualización en Power BI para detectar patrones sospechosos, picos de tráfico y flujos críticos.
 
-Está pensado para portafolio: muestra un flujo completo de datos, desde ETL hasta visualización en Power BI.
+## Problema que resuelve
 
-## Resultado principal
+En escenarios con alto volumen de tráfico, detectar comportamiento anómalo en tiempo útil es complejo cuando los datos están crudos o dispersos. Este proyecto centraliza el flujo completo para responder rápidamente preguntas como:
 
-- 380000 registros procesados y almacenados
-- 380000 registros scoreados en `network_traffic_scored`
-- 7553 anomalías detectadas
+- Qué flujos tienen mayor probabilidad de ser anómalos.
+- Qué segmentos presentan mayor intensidad de tráfico.
+- Qué porcentaje del tráfico total cae en zona de riesgo.
 
 ## Arquitectura
 
+- `etl/cicids2017_etl.py` limpia y normaliza el dataset CICIDS2017.
+- PostgreSQL almacena la capa base (`network_traffic`) y la capa scoreada (`network_traffic_scored`).
+- `ml/train_isolation_forest.py` entrena el modelo no supervisado.
+- `ml/score_isolation_forest.py` calcula `anomaly_score` e `is_anomaly` para cada flujo.
+- FastAPI expone métricas, anomalías y predicción puntual.
+- Power BI consume la tabla scoreada para dashboard ejecutivo.
+
+## Estructura del proyecto
+
 ```text
-ETL -> PostgreSQL -> ML Scoring -> PostgreSQL (scored) -> FastAPI -> Dashboard
+network_monitoring/
+├── api/
+│   ├── main.py
+│   └── crud.py
+├── db/
+│   ├── connection.py
+│   └── schema.sql
+├── etl/
+│   ├── cicids2017_etl.py
+│   └── load_data.py
+├── ml/
+│   ├── runtime.py
+│   ├── train_isolation_forest.py
+│   └── score_isolation_forest.py
+├── models/
+│   └── schemas.py
+├── sql/
+│   ├── checks.sql
+│   ├── analytics.sql
+│   └── anomalies.sql
+├── dashboards/
+│   └── traffic.pbix
+├── images/
+├── tests/
+├── README.md
+├── requirements.txt
+└── .env.example
 ```
 
-## Stack
+## Modelo de datos
+
+- `network_traffic`: tabla base con features de flujo normalizadas desde ETL.
+- `network_traffic_scored`: tabla enriquecida con features derivadas y resultado de ML.
+
+Relación principal:
+
+- `network_traffic (1)` -> `network_traffic_scored (1)` por `id`.
+
+## Métricas principales
+
+- Total de flujos procesados.
+- Total de anomalías detectadas (`is_anomaly = 1`).
+- Ratio de anomalía sobre el total.
+- P95 / P99 de `anomaly_score`.
+- Endpoints de consulta para top tráfico y top sospechosos.
+
+## Insights del dashboard
+
+- Identificación rápida de flujos con score extremo.
+- Detección de patrones de tráfico con comportamiento atípico.
+- Priorización de investigación por volumen + score de anomalía.
+- Comparación de distribución de tráfico benigno vs sospechoso.
+
+## Resultados reales
+
+- Registros cargados en `network_traffic`: `380000`
+- Registros scoreados en `network_traffic_scored`: `380000`
+- Anomalías detectadas por ML: `7553`
+
+## Vista previa
+
+### Dashboard general
+
+![Dashboard](images/dashboard.jpeg)
+
+### Error/Anomaly view
+
+![Error](images/anomalies_table.jpeg)
+
+### Latencia/Distribución de tráfico
+
+![Latency](images/scatter_plot.jpeg)
+
+## Endpoints disponibles
+
+- `GET /health`
+- `GET /metrics/summary`
+- `GET /metrics/advanced`
+- `GET /anomalies`
+- `GET /anomalies/ml`
+- `GET /top_traffic`
+- `GET /top_suspicious`
+- `POST /predict`
+
+## Tecnologías utilizadas
 
 - Python 3.11
 - pandas
+- scikit-learn
 - PostgreSQL
+- SQL analítico
 - FastAPI
-- scikit-learn (Isolation Forest)
+- Power BI
 
-## Endpoints principales
+## Cómo ejecutar el proyecto
 
-- GET `/health` estado del servicio
-- GET `/metrics/summary` resumen general
-- GET `/anomalies/ml` anomalías detectadas por el modelo
-- GET `/top_suspicious` flujos con mayor score
-- POST `/predict` predicción para un solo flujo
+### 1. Instalar dependencias
 
-## Ejecución local (rápida)
-
-### 1. Configurar `.env`
-
-```dotenv
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=network_monitoring_db
-CSV_PATH=C:\Users\blak_\Documents\cicids2017\Benign-Monday-no-metadata.csv
-CHUNK_SIZE=100000
-BATCH_SIZE=5000
-API_HOST=0.0.0.0
-API_PORT=8000
-```
-
-### 2. Instalar dependencias
-
-```powershell
+```bash
 py -3.11 -m pip install -r requirements.txt
 ```
 
+### 2. Configurar base de datos y entorno
+
+- Crea la base en PostgreSQL.
+- Configura variables en `.env` a partir de `.env.example`.
+
 ### 3. Cargar datos (ETL)
 
-```powershell
+```bash
 py -3.11 -m etl.load_data --csv-path "C:\Users\blak_\Documents\cicids2017\Benign-Monday-no-metadata.csv"
 ```
 
 ### 4. Entrenar modelo
 
-```powershell
+```bash
 py -3.11 .\ml\train_isolation_forest.py --sample-size 50000 --chunk-size 50000
 ```
 
-### 5. Generar scoring
+### 5. Ejecutar scoring
 
-```powershell
+```bash
 py -3.11 .\ml\score_isolation_forest.py --chunk-size 100000 --replace-table
 ```
 
 ### 6. Levantar API
 
-```powershell
+```bash
 py -3.11 -m uvicorn api.main:app --reload
 ```
 
-## Dashboard (Power BI)
+### 7. Cargar Power BI
 
-![Dashboard](images/dashboard.jpeg)
-![Scatter Plot](images/scatter_plot.jpeg)
-![Anomalies Table](images/anomalies_table.jpeg)
+Abre `dashboards/traffic.pbix` y conecta la fuente a PostgreSQL usando `network_traffic_scored` como tabla principal.
 
-Archivo Power BI: `dashboards/traffic.pbix`
+## SQL incluido
 
-Conéctalo a PostgreSQL y usa la tabla `network_traffic_scored`.
+- `sql/checks.sql`: validaciones rápidas de volumen y anomalías.
+- `sql/analytics.sql`: consultas agregadas para análisis exploratorio.
+- `sql/anomalies.sql`: top de flujos sospechosos por score.
 
-## SQL útil
+## Cierre
 
-```sql
-SELECT COUNT(*) FROM network_traffic;
-SELECT COUNT(*) FROM network_traffic_scored;
-SELECT COUNT(*) FROM network_traffic_scored WHERE is_anomaly = 1;
-```
-
-## Estado
-
-Proyecto funcional de punta a punta y listo para presentación en GitHub.
+Este proyecto presenta una base sólida para monitoreo de red con enfoque analítico: ETL robusto, persistencia relacional, scoring de anomalías con ML y visualización ejecutiva para priorizar decisiones técnicas con datos.
