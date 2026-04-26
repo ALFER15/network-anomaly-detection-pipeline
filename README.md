@@ -94,13 +94,13 @@ Relación principal:
 
 ![Dashboard](images/dashboard.jpeg)
 
-### Error/Anomaly view
-
-![Error](images/anomalies_table.jpeg)
-
 ### Latencia/Distribución de tráfico
 
 ![Latency](images/scatter_plot.jpeg)
+
+### Error/Anomaly view 
+
+![Error](images/anomalies_table.jpeg)
 
 ## Endpoints disponibles
 
